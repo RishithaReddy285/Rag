@@ -373,6 +373,19 @@ def debug():
     }
 
 
+@app.get("/api/check-groq")
+def check_groq():
+    try:
+        get_groq_api_key()
+    except HTTPException as error:
+        return JSONResponse(
+            status_code=error.status_code,
+            content={"detail": error.detail},
+        )
+
+    return {"status": "ok", "groq_api_key_configured": True}
+
+
 def answer_question(question: str):
     question = question.strip()
 
