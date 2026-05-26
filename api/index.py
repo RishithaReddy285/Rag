@@ -378,10 +378,7 @@ def check_groq():
     try:
         get_groq_api_key()
     except HTTPException as error:
-        return JSONResponse(
-            status_code=error.status_code,
-            content={"detail": error.detail},
-        )
+        return {"status": "missing", "detail": error.detail}
 
     return {"status": "ok", "groq_api_key_configured": True}
 
@@ -399,14 +396,15 @@ def answer_question(question: str):
         get_groq_api_key()
         return QueryResponse(answer=query_rag(question))
     except HTTPException as error:
-        return JSONResponse(
-            status_code=error.status_code,
-            content={"detail": error.detail},
+        return QueryResponse(
+            answer=(
+                "Advanced RAG retrieval is working, but generation cannot run yet. "
+                f"{error.detail}"
+            )
         )
     except Exception as error:
-        return JSONResponse(
-            status_code=400,
-            content={"detail": f"Advanced RAG query failed. {error}"},
+        return QueryResponse(
+            answer=f"Advanced RAG query failed before generation completed. {error}"
         )
 
 
