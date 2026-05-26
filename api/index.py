@@ -373,18 +373,8 @@ def debug():
     }
 
 
-@app.post("/api/query")
-async def query(request: Request):
-    try:
-        payload = await request.json()
-        parsed_request = QueryRequest(**payload)
-    except Exception:
-        return JSONResponse(
-            status_code=400,
-            content={"detail": "Request body must include a JSON question field."},
-        )
-
-    question = parsed_request.question.strip()
+def answer_question(question: str):
+    question = question.strip()
 
     if not question:
         return JSONResponse(
@@ -405,6 +395,25 @@ async def query(request: Request):
             status_code=500,
             content={"detail": f"Advanced RAG query failed. {error}"},
         )
+
+
+@app.get("/api/query")
+def query_get(question: str = ""):
+    return answer_question(question)
+
+
+@app.post("/api/query")
+async def query(request: Request):
+    try:
+        payload = await request.json()
+        parsed_request = QueryRequest(**payload)
+    except Exception:
+        return JSONResponse(
+            status_code=400,
+            content={"detail": "Request body must include a JSON question field."},
+        )
+
+    return answer_question(parsed_request.question)
 
 
 def fallback_frontend() -> HTMLResponse:

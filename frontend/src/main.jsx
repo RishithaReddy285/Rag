@@ -47,13 +47,8 @@ function App() {
     ]);
 
     try {
-      const response = await fetch(`${API_URL}/api/query`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ question: trimmed }),
-      });
+      const params = new URLSearchParams({ question: trimmed });
+      const response = await fetch(`${API_URL}/api/query?${params}`);
 
       const contentType = response.headers.get("content-type") || "";
       const data = contentType.includes("application/json")
