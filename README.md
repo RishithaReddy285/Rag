@@ -12,7 +12,7 @@ Step 5: Run `python main.py` to start asking questions
 
 To use the React frontend:
 
-Step 1: Run `uvicorn server:app --reload --host 0.0.0.0 --port 8010`
+Step 1: Run `uvicorn local_server:app --reload --host 0.0.0.0 --port 8010`
 
 Step 2: In another terminal, run `cd frontend && npm install && npm run dev`
 
