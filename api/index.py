@@ -315,7 +315,7 @@ def get_groq_api_key() -> str:
 
     if not api_key:
         raise HTTPException(
-            status_code=500,
+            status_code=400,
             detail="GROQ_API_KEY is not configured in this Vercel project.",
         )
 
@@ -347,7 +347,7 @@ def query_rag(question: str) -> str:
         )
     except Exception as error:
         raise HTTPException(
-            status_code=502,
+            status_code=400,
             detail=f"Groq request failed. Check GROQ_API_KEY and GROQ_MODEL. {error}",
         ) from error
 
@@ -405,7 +405,7 @@ def answer_question(question: str):
         )
     except Exception as error:
         return JSONResponse(
-            status_code=500,
+            status_code=400,
             content={"detail": f"Advanced RAG query failed. {error}"},
         )
 
