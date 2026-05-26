@@ -1,8 +1,11 @@
 {
   "private": true,
+  "workspaces": [
+    "frontend"
+  ],
   "scripts": {
-    "build": "npm --prefix frontend run build",
-    "dev:frontend": "npm --prefix frontend run dev",
+    "build": "npm --workspace frontend run build",
+    "dev:frontend": "npm --workspace frontend run dev",
     "dev:backend": "uvicorn local_server:app --reload --host 0.0.0.0 --port 8010"
   }
 }
