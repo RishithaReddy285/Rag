@@ -20,10 +20,16 @@ Step 3: Open http://localhost:5173
 
 To deploy on Vercel:
 
-Step 1: Set the production environment variables in Vercel from `.env.example`
+Step 1: Import the `naive-rag` folder as the Vercel project root. Do not set the root directory to `api/` or `frontend/`.
 
-Step 2: Vercel installs `requirements-vercel.txt` for the serverless API
+Step 2: Set the production environment variables in Vercel from `.env.example`. Leave `VITE_API_URL` empty in production so the frontend calls the same Vercel domain.
 
-Step 3: Vercel builds the React app from `frontend/` and serves a lightweight Groq RAG API through `/api`
+Step 3: Use these Vercel build settings:
+
+- Install Command: `pip install -r requirements-vercel.txt && npm --prefix frontend install`
+- Build Command: `npm run build`
+- Output Directory: `frontend/dist`
+
+Step 4: Vercel builds the React app from `frontend/` and serves the FastAPI RAG backend through `/api`.
 
 LangSmith traces will appear at https://smith.langchain.com
