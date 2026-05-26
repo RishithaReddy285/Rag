@@ -7,11 +7,10 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from groq import Groq
-from langsmith import traceable
 from pydantic import BaseModel
 
 
@@ -323,7 +322,6 @@ def get_groq_api_key() -> str:
     return api_key
 
 
-@traceable
 def query_rag(question: str) -> str:
     context = retrieve_context(question, k=TOP_K)
     client = Groq(api_key=get_groq_api_key())
@@ -368,7 +366,18 @@ def query(request: QueryRequest):
     if not question:
         raise HTTPException(status_code=400, detail="Question is required.")
 
-    return QueryResponse(answer=query_rag(question))
+    try:
+        return QueryResponse(answer=query_rag(question))
+    except HTTPException as error:
+        return JSONResponse(
+            status_code=error.status_code,
+            content={"detail": error.detail},
+        )
+    except Exception as error:
+        return JSONResponse(
+            status_code=500,
+            content={"detail": f"Advanced RAG query failed. {error}"},
+        )
 
 
 def fallback_frontend() -> HTMLResponse:
