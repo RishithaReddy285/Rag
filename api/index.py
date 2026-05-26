@@ -356,7 +356,21 @@ def query_rag(question: str) -> str:
 
 @app.get("/api/health")
 def health():
-    return {"status": "ok"}
+    return {"status": "ok", "rag": "advanced", "version": "2026-05-26.2"}
+
+
+@app.get("/api/debug")
+def debug():
+    chunks, _, _ = load_index()
+
+    return {
+        "status": "ok",
+        "rag": "advanced",
+        "chunks": len(chunks),
+        "docs_dir": str(DOCS_DIR),
+        "groq_api_key_configured": bool(os.getenv("GROQ_API_KEY", "").strip()),
+        "groq_model": GROQ_MODEL,
+    }
 
 
 @app.post("/api/query", response_model=QueryResponse)
@@ -367,6 +381,7 @@ def query(request: QueryRequest):
         raise HTTPException(status_code=400, detail="Question is required.")
 
     try:
+        get_groq_api_key()
         return QueryResponse(answer=query_rag(question))
     except HTTPException as error:
         return JSONResponse(
