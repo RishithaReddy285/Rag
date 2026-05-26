@@ -1,0 +1,5 @@
+Naive RAG is a simple retrieval augmented generation pattern.
+
+In this project, documents are loaded from the docs folder, split into overlapping chunks, embedded into a Chroma vector database, retrieved with similarity search, and passed as context to a Groq chat model.
+
+The project intentionally stays naive. It does not use agents, memory, reranking, or advanced orchestration.

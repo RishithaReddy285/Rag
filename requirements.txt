@@ -1,0 +1,10 @@
+langchain
+langchain-groq
+langchain-chroma
+langchain-community
+chromadb
+langsmith
+python-dotenv
+pypdf
+fastapi
+uvicorn
