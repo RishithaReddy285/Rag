@@ -9,9 +9,5 @@ chroma_test_db/
 frontend/node_modules/
 frontend/dist/
 .vite/
-.vercel/
 
-.DS_Store
-Thumbs.db
-
-.vercel
+.git/

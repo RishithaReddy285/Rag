@@ -3,7 +3,9 @@ import { createRoot } from "react-dom/client";
 import { Loader2, Send, Server, Sparkles } from "lucide-react";
 import "./styles.css";
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8010";
+const API_URL =
+  import.meta.env.VITE_API_URL ||
+  (import.meta.env.DEV ? "http://localhost:8010" : "");
 
 function App() {
   const [question, setQuestion] = useState("");

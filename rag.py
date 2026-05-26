@@ -1,4 +1,7 @@
 import os
+import shutil
+import tempfile
+from pathlib import Path
 
 from dotenv import load_dotenv
 from langchain_chroma import Chroma
@@ -15,11 +18,25 @@ COLLECTION_NAME = "naive_rag"
 GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
 
 
+def get_chroma_persist_dir() -> str:
+    source_dir = Path(CHROMA_PERSIST_DIR)
+
+    if not os.getenv("VERCEL"):
+        return str(source_dir)
+
+    target_dir = Path(tempfile.gettempdir()) / "chroma_db"
+
+    if not target_dir.exists() and source_dir.exists():
+        shutil.copytree(source_dir, target_dir)
+
+    return str(target_dir)
+
+
 @traceable
 def query_rag(question: str) -> str:
     embeddings = ChromaDefaultEmbeddings()
     vector_store = Chroma(
-        persist_directory=CHROMA_PERSIST_DIR,
+        persist_directory=get_chroma_persist_dir(),
         collection_name=COLLECTION_NAME,
         embedding_function=embeddings,
     )
