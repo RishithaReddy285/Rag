@@ -1,1 +1,4 @@
-from server import app
+from server import app as fastapi_app
+
+
+app = fastapi_app
