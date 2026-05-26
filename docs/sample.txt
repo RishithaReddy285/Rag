@@ -1,5 +1,5 @@
-Naive RAG is a simple retrieval augmented generation pattern.
+Advanced RAG is a stronger retrieval augmented generation pattern built from the original naive RAG project.
 
-In this project, documents are loaded from the docs folder, split into overlapping chunks, embedded into a Chroma vector database, retrieved with similarity search, and passed as context to a Groq chat model.
+In the local workflow, documents are loaded from the docs folder, split into overlapping chunks, embedded into a Chroma vector database, retrieved with similarity search, and passed as context to a Groq chat model.
 
-The project intentionally stays naive. It does not use agents, memory, reranking, or advanced orchestration.
+In the Vercel deployment, the API uses an advanced lightweight retriever with sentence-aware chunking, query expansion, BM25-style lexical scoring, phrase boosts, source labels, and diversity reranking before passing context to Groq.

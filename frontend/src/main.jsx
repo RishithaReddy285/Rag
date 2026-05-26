@@ -93,8 +93,8 @@ function App() {
       <section className="workspace" aria-label="Naive RAG chat">
         <header className="topbar">
           <div>
-            <h1>Naive RAG</h1>
-            <p>Groq generation with document retrieval</p>
+            <h1>Advanced RAG</h1>
+            <p>Hybrid retrieval with Groq generation</p>
           </div>
           <div className={`status status-${status}`}>
             <Server size={16} aria-hidden="true" />

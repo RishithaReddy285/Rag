@@ -3,6 +3,7 @@
   "framework": "fastapi",
   "installCommand": "pip install -r requirements-vercel.txt && npm install",
   "buildCommand": "npm run build",
+  "outputDirectory": "frontend/dist",
   "rewrites": [
     {
       "source": "/api/:path*",

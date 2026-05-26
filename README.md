@@ -1,4 +1,4 @@
-# Naive RAG
+# Advanced RAG
 
 Step 1: `pip install -r requirements.txt`
 
@@ -9,6 +9,8 @@ Step 3: Add PDF or TXT files to the `docs/` folder
 Step 4: Run `python ingest.py` to build the vector database
 
 Step 5: Run `python main.py` to start asking questions
+
+The local CLI workflow uses Chroma similarity search. The Vercel API uses an advanced lightweight RAG retriever with sentence-aware chunking, query expansion, BM25-style scoring, phrase boosts, source labels, and diversity reranking before calling Groq.
 
 To use the React frontend:
 
@@ -29,8 +31,8 @@ Step 3: Use these Vercel build settings:
 - Framework Preset: `FastAPI`
 - Install Command: `pip install -r requirements-vercel.txt && npm install`
 - Build Command: `npm run build`
-- Output Directory: leave empty
+- Output Directory: `frontend/dist`
 
-Step 4: Vercel builds the React app from `frontend/`, bundles `frontend/dist/` into the FastAPI function, serves the frontend at `/`, and serves the RAG backend through `/api`.
+Step 4: Vercel builds the React app from `frontend/`, serves the frontend at `/`, and serves the advanced RAG backend through `/api`.
 
 LangSmith traces will appear at https://smith.langchain.com

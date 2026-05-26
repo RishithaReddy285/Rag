@@ -1,5 +1,8 @@
 import os
 import re
+import math
+from dataclasses import dataclass
+from functools import lru_cache
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -22,13 +25,17 @@ load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 DOCS_DIR = Path(os.getenv("DOCS_DIR", str(BASE_DIR / "docs")))
-FRONTEND_DIST = BASE_DIR / "frontend" / "dist"
+PUBLIC_DIR = BASE_DIR / "public"
+FRONTEND_DIST = PUBLIC_DIR if PUBLIC_DIR.exists() else BASE_DIR / "frontend" / "dist"
 FRONTEND_INDEX = FRONTEND_DIST / "index.html"
 GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
-CHUNK_SIZE = 1000
-CHUNK_OVERLAP = 200
+CHUNK_SIZE = 900
+CHUNK_OVERLAP = 180
+TOP_K = 5
+RERANK_POOL_SIZE = 18
+MMR_LAMBDA = 0.72
 
-app = FastAPI(title="Naive RAG API")
+app = FastAPI(title="Advanced RAG API")
 
 app.add_middleware(
     CORSMiddleware,
@@ -43,7 +50,16 @@ if (FRONTEND_DIST / "assets").exists():
         "/assets",
         StaticFiles(directory=str(FRONTEND_DIST / "assets")),
         name="assets",
-    )
+)
+
+
+@dataclass(frozen=True)
+class DocumentChunk:
+    source: str
+    index: int
+    text: str
+    tokens: tuple[str, ...]
+    token_set: frozenset[str]
 
 
 class QueryRequest(BaseModel):
@@ -60,7 +76,16 @@ def split_text(text: str) -> list[str]:
     start = 0
 
     while start < len(clean_text):
-        end = start + CHUNK_SIZE
+        end = min(len(clean_text), start + CHUNK_SIZE)
+        if end < len(clean_text):
+            sentence_boundary = max(
+                clean_text.rfind(". ", start, end),
+                clean_text.rfind("? ", start, end),
+                clean_text.rfind("! ", start, end),
+            )
+            if sentence_boundary > start + int(CHUNK_SIZE * 0.55):
+                end = sentence_boundary + 1
+
         chunk = clean_text[start:end].strip()
 
         if chunk:
@@ -85,45 +110,205 @@ def load_text_from_file(file_path: Path) -> str:
     return ""
 
 
-def load_chunks() -> list[str]:
+def normalize_token(token: str) -> str:
+    token = token.lower()
+
+    for suffix in ("ing", "ed", "es", "s"):
+        if len(token) > len(suffix) + 3 and token.endswith(suffix):
+            return token[: -len(suffix)]
+
+    return token
+
+
+def tokenize_list(text: str) -> list[str]:
+    return [
+        normalize_token(token)
+        for token in re.findall(r"[a-zA-Z0-9]+", text.lower())
+        if len(token) > 2
+    ]
+
+
+def load_chunks() -> list[DocumentChunk]:
     chunks = []
 
     if not DOCS_DIR.exists():
         return chunks
 
-    for file_path in DOCS_DIR.rglob("*"):
+    for file_path in sorted(DOCS_DIR.rglob("*")):
         if file_path.suffix.lower() not in {".pdf", ".txt"}:
             continue
 
-        chunks.extend(split_text(load_text_from_file(file_path)))
+        source = str(file_path.relative_to(DOCS_DIR)).replace("\\", "/")
+        for index, chunk in enumerate(split_text(load_text_from_file(file_path))):
+            tokens = tuple(tokenize_list(chunk))
+            chunks.append(
+                DocumentChunk(
+                    source=source,
+                    index=index,
+                    text=chunk,
+                    tokens=tokens,
+                    token_set=frozenset(tokens),
+                )
+            )
 
     return chunks
 
 
-def tokenize(text: str) -> set[str]:
-    return {
-        token
-        for token in re.findall(r"[a-zA-Z0-9]+", text.lower())
-        if len(token) > 2
+@lru_cache(maxsize=1)
+def load_index() -> tuple[list[DocumentChunk], dict[str, int], float]:
+    chunks = load_chunks()
+    document_frequency: dict[str, int] = {}
+
+    for chunk in chunks:
+        for token in chunk.token_set:
+            document_frequency[token] = document_frequency.get(token, 0) + 1
+
+    average_length = (
+        sum(len(chunk.tokens) for chunk in chunks) / len(chunks) if chunks else 0.0
+    )
+
+    return chunks, document_frequency, average_length
+
+
+def expand_query(question: str) -> list[str]:
+    tokens = tokenize_list(question)
+    expanded = list(tokens)
+
+    synonyms = {
+        "doc": ("document", "file", "context"),
+        "docs": ("document", "file", "context"),
+        "information": ("info", "detail", "summary"),
+        "rag": ("retrieval", "generation", "context"),
+        "project": ("system", "application", "app"),
     }
+
+    for token in tokens:
+        expanded.extend(synonyms.get(token, ()))
+
+    return expanded
+
+
+def bm25_score(
+    query_tokens: list[str],
+    chunk: DocumentChunk,
+    document_frequency: dict[str, int],
+    average_length: float,
+    total_chunks: int,
+) -> float:
+    if not query_tokens or not chunk.tokens:
+        return 0.0
+
+    token_counts: dict[str, int] = {}
+    for token in chunk.tokens:
+        token_counts[token] = token_counts.get(token, 0) + 1
+
+    score = 0.0
+    k1 = 1.4
+    b = 0.72
+    chunk_length = len(chunk.tokens)
+
+    for token in query_tokens:
+        frequency = token_counts.get(token, 0)
+        if not frequency:
+            continue
+
+        df = document_frequency.get(token, 0)
+        idf = math.log(1 + (total_chunks - df + 0.5) / (df + 0.5))
+        denominator = frequency + k1 * (1 - b + b * chunk_length / average_length)
+        score += idf * ((frequency * (k1 + 1)) / denominator)
+
+    return score
+
+
+def phrase_boost(question: str, chunk: DocumentChunk) -> float:
+    clean_question = re.sub(r"\s+", " ", question.lower()).strip()
+    clean_chunk = chunk.text.lower()
+    boost = 0.0
+
+    if clean_question and clean_question in clean_chunk:
+        boost += 3.0
+
+    query_terms = tokenize_list(question)
+    for size in (4, 3, 2):
+        for index in range(0, max(0, len(query_terms) - size + 1)):
+            phrase = " ".join(query_terms[index : index + size])
+            if phrase in clean_chunk:
+                boost += 0.35 * size
+
+    return boost
+
+
+def similarity(left: DocumentChunk, right: DocumentChunk) -> float:
+    union = left.token_set | right.token_set
+    if not union:
+        return 0.0
+
+    return len(left.token_set & right.token_set) / len(union)
+
+
+def select_diverse_chunks(
+    scored_chunks: list[tuple[float, DocumentChunk]],
+    k: int,
+) -> list[DocumentChunk]:
+    selected: list[DocumentChunk] = []
+    remaining = scored_chunks[:]
+
+    while remaining and len(selected) < k:
+        best_position = 0
+        best_score = float("-inf")
+
+        for position, (relevance, chunk) in enumerate(remaining):
+            diversity_penalty = max(
+                (similarity(chunk, chosen) for chosen in selected),
+                default=0.0,
+            )
+            mmr_score = MMR_LAMBDA * relevance - (1 - MMR_LAMBDA) * diversity_penalty
+
+            if mmr_score > best_score:
+                best_position = position
+                best_score = mmr_score
+
+        _, best_chunk = remaining.pop(best_position)
+        selected.append(best_chunk)
+
+    return selected
 
 
 def retrieve_context(question: str, k: int = 5) -> str:
-    question_tokens = tokenize(question)
+    chunks, document_frequency, average_length = load_index()
+    if not chunks:
+        return "No documents were found in the configured docs directory."
+
+    query_tokens = expand_query(question)
     scored_chunks = []
 
-    for chunk in load_chunks():
-        chunk_tokens = tokenize(chunk)
-        score = len(question_tokens & chunk_tokens)
+    for chunk in chunks:
+        lexical_score = bm25_score(
+            query_tokens,
+            chunk,
+            document_frequency,
+            average_length,
+            len(chunks),
+        )
+        overlap_score = len(set(query_tokens) & chunk.token_set) / max(
+            len(set(query_tokens)),
+            1,
+        )
+        score = lexical_score + overlap_score + phrase_boost(question, chunk)
         scored_chunks.append((score, chunk))
 
     scored_chunks.sort(key=lambda item: item[0], reverse=True)
-    top_chunks = [chunk for score, chunk in scored_chunks[:k] if score > 0]
+    candidates = [(score, chunk) for score, chunk in scored_chunks[:RERANK_POOL_SIZE] if score > 0]
 
-    if not top_chunks:
-        top_chunks = [chunk for _, chunk in scored_chunks[:k]]
+    if not candidates:
+        candidates = scored_chunks[:RERANK_POOL_SIZE]
 
-    return "\n\n".join(top_chunks)
+    selected_chunks = select_diverse_chunks(candidates, k)
+
+    return "\n\n".join(
+        f"Source: {chunk.source} | Chunk: {chunk.index + 1}\n{chunk.text}"
+        for chunk in selected_chunks
+    )
 
 
 def get_groq_api_key() -> str:
@@ -140,7 +325,7 @@ def get_groq_api_key() -> str:
 
 @traceable
 def query_rag(question: str) -> str:
-    context = retrieve_context(question, k=5)
+    context = retrieve_context(question, k=TOP_K)
     client = Groq(api_key=get_groq_api_key())
 
     try:
@@ -149,7 +334,12 @@ def query_rag(question: str) -> str:
             messages=[
                 {
                     "role": "system",
-                    "content": "You are a helpful assistant. Answer using only the context provided.",
+                    "content": (
+                        "You are an advanced RAG assistant. Answer only from the "
+                        "provided context. If the context does not contain the "
+                        "answer, say that the documents do not provide enough "
+                        "information. Cite source names when useful."
+                    ),
                 },
                 {
                     "role": "user",
@@ -189,7 +379,7 @@ def fallback_frontend() -> HTMLResponse:
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Naive RAG</title>
+    <title>Advanced RAG</title>
     <style>
       body { margin: 0; font-family: Arial, sans-serif; background: #f2f5f1; color: #1d2430; }
       main { min-height: 100vh; display: grid; place-items: center; padding: 24px; }
@@ -205,7 +395,7 @@ def fallback_frontend() -> HTMLResponse:
   <body>
     <main>
       <section>
-        <h1>Naive RAG</h1>
+        <h1>Advanced RAG</h1>
         <p>Ask a question about the documents deployed with this project.</p>
         <form id="form">
           <input id="question" placeholder="Ask about your docs" />
@@ -226,7 +416,10 @@ def fallback_frontend() -> HTMLResponse:
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ question })
         });
-        const data = await response.json();
+        const contentType = response.headers.get("content-type") || "";
+        const data = contentType.includes("application/json")
+          ? await response.json()
+          : { detail: await response.text() };
         answer.textContent = response.ok ? data.answer : (data.detail || "Request failed");
       });
     </script>
