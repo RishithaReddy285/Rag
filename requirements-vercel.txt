@@ -1,0 +1,5 @@
+fastapi
+groq
+langsmith
+python-dotenv
+pypdf

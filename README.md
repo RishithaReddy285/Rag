@@ -22,8 +22,8 @@ To deploy on Vercel:
 
 Step 1: Set the production environment variables in Vercel from `.env.example`
 
-Step 2: Vercel runs `python ingest.py` during the build to create `chroma_db`
+Step 2: Vercel installs `requirements-vercel.txt` for the serverless API
 
-Step 3: Vercel builds the React app from `frontend/` and serves the FastAPI app through `/api`
+Step 3: Vercel builds the React app from `frontend/` and serves a lightweight Groq RAG API through `/api`
 
 LangSmith traces will appear at https://smith.langchain.com
