@@ -402,6 +402,11 @@ def query_get(question: str = ""):
     return answer_question(question)
 
 
+@app.get("/api/ask")
+def ask_get(question: str = ""):
+    return answer_question(question)
+
+
 @app.post("/api/query")
 async def query(request: Request):
     try:

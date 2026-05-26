@@ -48,7 +48,7 @@ function App() {
 
     try {
       const params = new URLSearchParams({ question: trimmed });
-      const response = await fetch(`${API_URL}/api/query?${params}`);
+      const response = await fetch(`${API_URL}/api/ask?${params}`);
 
       const contentType = response.headers.get("content-type") || "";
       const data = contentType.includes("application/json")
