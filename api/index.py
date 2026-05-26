@@ -6,7 +6,7 @@ from functools import lru_cache
 from pathlib import Path
 
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
@@ -373,12 +373,24 @@ def debug():
     }
 
 
-@app.post("/api/query", response_model=QueryResponse)
-def query(request: QueryRequest):
-    question = request.question.strip()
+@app.post("/api/query")
+async def query(request: Request):
+    try:
+        payload = await request.json()
+        parsed_request = QueryRequest(**payload)
+    except Exception:
+        return JSONResponse(
+            status_code=400,
+            content={"detail": "Request body must include a JSON question field."},
+        )
+
+    question = parsed_request.question.strip()
 
     if not question:
-        raise HTTPException(status_code=400, detail="Question is required.")
+        return JSONResponse(
+            status_code=400,
+            content={"detail": "Question is required."},
+        )
 
     try:
         get_groq_api_key()
