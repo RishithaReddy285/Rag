@@ -4,6 +4,8 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from groq import Groq
 from langsmith import traceable
@@ -18,7 +20,10 @@ except ImportError:
 
 load_dotenv()
 
-DOCS_DIR = Path(os.getenv("DOCS_DIR", "./docs"))
+BASE_DIR = Path(__file__).resolve().parent.parent
+DOCS_DIR = Path(os.getenv("DOCS_DIR", str(BASE_DIR / "docs")))
+FRONTEND_DIST = BASE_DIR / "frontend" / "dist"
+FRONTEND_INDEX = FRONTEND_DIST / "index.html"
 GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
 CHUNK_SIZE = 1000
 CHUNK_OVERLAP = 200
@@ -32,6 +37,13 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+if (FRONTEND_DIST / "assets").exists():
+    app.mount(
+        "/assets",
+        StaticFiles(directory=str(FRONTEND_DIST / "assets")),
+        name="assets",
+    )
 
 
 class QueryRequest(BaseModel):
@@ -149,3 +161,81 @@ def query(request: QueryRequest):
         raise HTTPException(status_code=400, detail="Question is required.")
 
     return QueryResponse(answer=query_rag(question))
+
+
+def fallback_frontend() -> HTMLResponse:
+    return HTMLResponse(
+        """
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Naive RAG</title>
+    <style>
+      body { margin: 0; font-family: Arial, sans-serif; background: #f2f5f1; color: #1d2430; }
+      main { min-height: 100vh; display: grid; place-items: center; padding: 24px; }
+      section { width: min(760px, 100%); background: white; border: 1px solid #dce3da; border-radius: 8px; padding: 20px; }
+      h1 { margin: 0 0 6px; font-size: 24px; }
+      p { line-height: 1.5; }
+      form { display: grid; grid-template-columns: 1fr 44px; gap: 10px; margin-top: 18px; }
+      input { height: 44px; border: 1px solid #bdcabc; border-radius: 8px; padding: 0 12px; }
+      button { height: 44px; border: 0; border-radius: 8px; color: white; background: #315f46; cursor: pointer; }
+      #answer { margin-top: 18px; white-space: pre-wrap; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <section>
+        <h1>Naive RAG</h1>
+        <p>Ask a question about the documents deployed with this project.</p>
+        <form id="form">
+          <input id="question" placeholder="Ask about your docs" />
+          <button>Send</button>
+        </form>
+        <p id="answer"></p>
+      </section>
+    </main>
+    <script>
+      document.getElementById("form").addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const answer = document.getElementById("answer");
+        const question = document.getElementById("question").value.trim();
+        if (!question) return;
+        answer.textContent = "Searching...";
+        const response = await fetch("/api/query", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ question })
+        });
+        const data = await response.json();
+        answer.textContent = response.ok ? data.answer : (data.detail || "Request failed");
+      });
+    </script>
+  </body>
+</html>
+        """.strip()
+    )
+
+
+@app.get("/")
+def serve_frontend_root():
+    if FRONTEND_INDEX.exists():
+        return FileResponse(FRONTEND_INDEX)
+
+    return fallback_frontend()
+
+
+@app.get("/{full_path:path}")
+def serve_frontend(full_path: str):
+    if full_path.startswith("api/"):
+        raise HTTPException(status_code=404, detail="Not Found")
+
+    file_path = FRONTEND_DIST / full_path
+    if file_path.is_file():
+        return FileResponse(file_path)
+
+    if FRONTEND_INDEX.exists():
+        return FileResponse(FRONTEND_INDEX)
+
+    return fallback_frontend()
