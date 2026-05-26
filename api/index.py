@@ -126,24 +126,42 @@ def retrieve_context(question: str, k: int = 5) -> str:
     return "\n\n".join(top_chunks)
 
 
+def get_groq_api_key() -> str:
+    api_key = os.getenv("GROQ_API_KEY", "").strip()
+
+    if not api_key:
+        raise HTTPException(
+            status_code=500,
+            detail="GROQ_API_KEY is not configured in this Vercel project.",
+        )
+
+    return api_key
+
+
 @traceable
 def query_rag(question: str) -> str:
     context = retrieve_context(question, k=5)
-    client = Groq(api_key=os.environ["GROQ_API_KEY"])
+    client = Groq(api_key=get_groq_api_key())
 
-    response = client.chat.completions.create(
-        model=GROQ_MODEL,
-        messages=[
-            {
-                "role": "system",
-                "content": "You are a helpful assistant. Answer using only the context provided.",
-            },
-            {
-                "role": "user",
-                "content": f"Context:\n{context}\n\nQuestion: {question}",
-            },
-        ],
-    )
+    try:
+        response = client.chat.completions.create(
+            model=GROQ_MODEL,
+            messages=[
+                {
+                    "role": "system",
+                    "content": "You are a helpful assistant. Answer using only the context provided.",
+                },
+                {
+                    "role": "user",
+                    "content": f"Context:\n{context}\n\nQuestion: {question}",
+                },
+            ],
+        )
+    except Exception as error:
+        raise HTTPException(
+            status_code=502,
+            detail=f"Groq request failed. Check GROQ_API_KEY and GROQ_MODEL. {error}",
+        ) from error
 
     return response.choices[0].message.content or ""
 

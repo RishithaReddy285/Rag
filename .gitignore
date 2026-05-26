@@ -9,6 +9,7 @@ chroma_test_db/
 frontend/node_modules/
 node_modules/
 frontend/dist/
+public/
 .vite/
 .vercel/
 

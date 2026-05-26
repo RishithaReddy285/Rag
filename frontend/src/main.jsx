@@ -55,10 +55,15 @@ function App() {
         body: JSON.stringify({ question: trimmed }),
       });
 
-      const data = await response.json();
+      const contentType = response.headers.get("content-type") || "";
+      const data = contentType.includes("application/json")
+        ? await response.json()
+        : { detail: await response.text() };
 
       if (!response.ok) {
-        throw new Error(data.detail || "Request failed");
+        const requestError = new Error(data.detail || "Request failed");
+        requestError.backendReachable = true;
+        throw requestError;
       }
 
       setMessages((current) => [
@@ -67,7 +72,7 @@ function App() {
       ]);
       setStatus("online");
     } catch (error) {
-      setStatus("offline");
+      setStatus(error.backendReachable ? "online" : "offline");
       setMessages((current) => [
         ...current,
         {
