@@ -13,7 +13,7 @@ function App() {
     {
       role: "assistant",
       content:
-        "Ask a question about the documents indexed in your local Chroma database.",
+        "Ask a question about the documents available to this RAG system.",
     },
   ]);
   const [isLoading, setIsLoading] = useState(false);
@@ -89,7 +89,7 @@ function App() {
         <header className="topbar">
           <div>
             <h1>Naive RAG</h1>
-            <p>Groq generation with local Chroma retrieval</p>
+            <p>Groq generation with document retrieval</p>
           </div>
           <div className={`status status-${status}`}>
             <Server size={16} aria-hidden="true" />
@@ -118,7 +118,7 @@ function App() {
               <div className="message-icon">
                 <Loader2 className="spin" size={16} aria-hidden="true" />
               </div>
-              <p>Searching the vector database...</p>
+              <p>Searching the document context...</p>
             </article>
           ) : null}
         </div>

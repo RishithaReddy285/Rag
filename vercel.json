@@ -1,8 +1,8 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "fastapi",
-  "installCommand": "pip install -r requirements-vercel.txt",
-  "buildCommand": null,
+  "installCommand": "pip install -r requirements-vercel.txt && npm install",
+  "buildCommand": "npm run build",
   "rewrites": [
     {
       "source": "/api/:path*",

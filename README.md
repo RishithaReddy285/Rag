@@ -26,10 +26,11 @@ Step 2: Set the production environment variables in Vercel from `.env.example`. 
 
 Step 3: Use these Vercel build settings:
 
-- Install Command: `pip install -r requirements-vercel.txt && npm --prefix frontend install`
+- Framework Preset: `FastAPI`
+- Install Command: `pip install -r requirements-vercel.txt && npm install`
 - Build Command: `npm run build`
-- Output Directory: `frontend/dist`
+- Output Directory: leave empty
 
-Step 4: Vercel builds the React app from `frontend/` and serves the FastAPI RAG backend through `/api`.
+Step 4: Vercel builds the React app from `frontend/`, bundles `frontend/dist/` into the FastAPI function, serves the frontend at `/`, and serves the RAG backend through `/api`.
 
 LangSmith traces will appear at https://smith.langchain.com
