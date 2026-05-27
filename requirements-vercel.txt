@@ -1,5 +1,6 @@
 fastapi
-groq
+langchain
+langchain-groq
 langsmith
 python-dotenv
 pypdf
