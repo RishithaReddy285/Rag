@@ -1,0 +1,5 @@
+Advanced RAG is enabled for this project.
+
+The app no longer relies on a simple naive retrieval pass. It uses sentence-aware chunking, query expansion, BM25-style lexical retrieval, TF-IDF semantic retrieval, reciprocal-rank hybrid fusion, score normalization, adaptive lexical/semantic weighting, minimum-score filtering, context budgeting, and MMR reranking.
+
+The frontend optimizer lets you switch between balanced, precision, recall, semantic, and keyword profiles, then tune top-k, rerank pool size, lexical weight, semantic weight, MMR lambda, minimum score, and adaptive weighting for each question. API responses also include ranked source metadata and a retrieval summary so selected context can be inspected.

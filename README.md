@@ -1,4 +1,4 @@
-# Advanced RAG
+# Advanced Hybrid RAG
 
 Step 1: `pip install -r requirements.txt`
 
@@ -6,11 +6,21 @@ Step 2: Copy `.env.example` to `.env` and fill in your Groq and LangSmith keys
 
 Step 3: Add PDF or TXT files to the `docs/` folder
 
-Step 4: Run `python ingest.py` to build the vector database
+Step 4: Run `python main.py` to start asking questions
 
-Step 5: Run `python main.py` to start asking questions
+The local CLI, local FastAPI server, and Vercel API all use an advanced lightweight RAG retriever with sentence-aware chunking, query expansion, BM25-style lexical scoring, TF-IDF cosine semantic scoring, reciprocal-rank hybrid fusion, source labels, score normalization, adaptive lexical/semantic weighting, context budgeting, minimum-score filtering, and MMR diversity reranking before calling Groq.
 
-The local CLI workflow uses Chroma similarity search. The Vercel API uses an advanced lightweight RAG retriever with sentence-aware chunking, query expansion, BM25-style scoring, phrase boosts, source labels, and diversity reranking before calling Groq.
+Hybrid reranking optimization is available from the React UI and API:
+
+- `optimization_profile`: `balanced`, `precision`, `recall`, `semantic`, or `keyword`
+- `top_k`: final number of chunks sent to the model
+- `rerank_pool_size`: candidate pool fused before MMR
+- `lexical_weight` and `semantic_weight`: BM25/phrase matching versus TF-IDF semantic matching
+- `adaptive_weights`: adjusts the blend for short/exact or longer conceptual queries
+- `mmr_lambda`: relevance versus diversity during reranking
+- `min_score`: filters weaker fused candidates
+
+The API response includes ranked source metadata with fused, lexical, and semantic scores so you can inspect why each chunk was selected.
 
 To use the React frontend:
 

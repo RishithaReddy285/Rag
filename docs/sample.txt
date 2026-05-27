@@ -1,5 +1,5 @@
 Advanced RAG is a stronger retrieval augmented generation pattern built from the original naive RAG project.
 
-In the local workflow, documents are loaded from the docs folder, split into overlapping chunks, embedded into a Chroma vector database, retrieved with similarity search, and passed as context to a Groq chat model.
+In the local workflow, documents are loaded from the docs folder, split into sentence-aware overlapping chunks, ranked with query expansion, BM25-style lexical scoring, TF-IDF cosine semantic scoring, reciprocal-rank hybrid fusion, phrase boosts, source labels, and MMR diversity reranking, then passed as context to a Groq chat model.
 
-In the Vercel deployment, the API uses an advanced lightweight retriever with sentence-aware chunking, query expansion, BM25-style lexical scoring, phrase boosts, source labels, and diversity reranking before passing context to Groq.
+The Vercel deployment uses the same advanced lightweight retrieval pattern before passing context to Groq.

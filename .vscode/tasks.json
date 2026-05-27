@@ -1,0 +1,37 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Run Advanced RAG Backend",
+      "type": "shell",
+      "command": "python -m uvicorn local_server:app --reload --host 127.0.0.1 --port 8099",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "isBackground": true,
+      "problemMatcher": []
+    },
+    {
+      "label": "Run Advanced RAG Frontend",
+      "type": "shell",
+      "command": "npm run dev -- --host 127.0.0.1 --port 5181 --force",
+      "options": {
+        "cwd": "${workspaceFolder}/frontend",
+        "env": {
+          "VITE_API_URL": "http://localhost:8099"
+        }
+      },
+      "isBackground": true,
+      "problemMatcher": []
+    },
+    {
+      "label": "Run Advanced RAG App",
+      "dependsOrder": "parallel",
+      "dependsOn": [
+        "Run Advanced RAG Backend",
+        "Run Advanced RAG Frontend"
+      ],
+      "problemMatcher": []
+    }
+  ]
+}

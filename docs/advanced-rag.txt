@@ -2,6 +2,16 @@ Advanced RAG project notes:
 
 The deployed Vercel API uses an advanced lightweight RAG pipeline for document question answering. It keeps the same FastAPI endpoints and Groq generation flow, but improves retrieval before the model is called.
 
-The advanced retriever loads TXT and PDF files from the docs folder, creates sentence-aware overlapping chunks, normalizes query and document terms, expands common query terms, scores chunks with a BM25-style lexical ranking function, applies phrase boosts for exact matches, labels every context block with its source file and chunk number, and uses diversity reranking so the final context is relevant without being repetitive.
+The advanced retriever loads TXT and PDF files from the docs folder, creates sentence-aware overlapping chunks, normalizes query and document terms, expands common query terms, scores chunks with BM25-style lexical ranking and TF-IDF cosine semantic matching, applies phrase boosts for exact matches, normalizes scores, fuses lexical and semantic rankings with reciprocal-rank fusion, labels every context block with its source file and chunk number, and uses MMR diversity reranking so the final context is relevant without being repetitive.
+
+Hybrid reranking optimization features:
+
+- Query-adaptive lexical and semantic weights.
+- Tunable final top-k and rerank candidate pool size.
+- Tunable lexical/semantic blend for keyword-heavy or concept-heavy questions.
+- Tunable MMR lambda to balance relevance against context diversity.
+- Minimum fused-score filtering to reduce noisy context.
+- Context character budgeting to keep prompts concise.
+- Retrieval metadata with rank, source, chunk, fused score, lexical score, semantic score, and preview text.
 
 The frontend and backend run on the same Vercel domain. The React app is served at the site root, while the backend exposes /api/health and /api/query. The query endpoint sends the selected advanced RAG context to Groq and instructs the model to answer only from the provided document context.

@@ -7,7 +7,7 @@ load_dotenv()
 
 
 def main():
-    print("Naive RAG ready. Type 'exit' to quit.")
+    print("Advanced RAG ready. Type 'exit' to quit.")
 
     while True:
         question = input("\nQuestion: ").strip()
